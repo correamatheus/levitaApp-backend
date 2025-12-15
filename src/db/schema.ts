@@ -11,8 +11,6 @@ import {
     type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
-import { create } from 'domain'
-import { id } from 'zod/locales'
 
 export const rolesEnum = pgEnum('roles', [
     'ADMIN',
@@ -59,7 +57,14 @@ export const collaborators = pgTable('collaborators', {
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
-export const collaboratorsTeamAssignments = pgTable('collaborators_team_assignments', {})
+export const collaboratorsTeamAssignments = pgTable('collaborators_team_assignments', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    collaboratorId: uuid('collaborator_id').notNull().references(() : AnyPgColumn => collaborators.id),
+    teamId: uuid('team_id').notNull().references(() : AnyPgColumn => teams.id),
+    assignedAt: timestamp('assigned_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
 
 export const roles = pgTable('roles', {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -196,3 +201,115 @@ export const auditLogs = pgTable('audit_logs', {
     createdAt: timestamp('created_at').notNull().defaultNow(),
     ipAddress: varchar('ip_address', { length: 45}),
 })
+
+// ==========================================
+// RELACIONAMENTOS (Relations)
+// ==========================================
+
+export const usersRelations = relations(users, ({ many }) => ({
+    ledTeams: many(teams),
+    createdCollaborators: many(collaborators),
+    createdEvents: many(events),
+    createdRoles: many(roles),
+    auditLogs: many(auditLogs),
+}))
+
+export const teamsRelations = relations(teams, ({ one, many }) => ({
+    leader: one(users, {
+        fields: [teams.leaderId],
+        references: [users.id],
+    }),
+    collaboratorAssignments: many(collaboratorsTeamAssignments),
+    eventRoleAssignments: many(eventRoleAssignments),
+}))
+
+export const collaboratorsRelations = relations(collaborators, ({ one, many }) => ({
+    createdBy: one(users, {
+        fields: [collaborators.createdById],
+        references: [users.id],
+    }),
+    teamAssignments: many(collaboratorsTeamAssignments),
+    eventRoleAssignments: many(eventRoleAssignments),
+    notifications: many(notifications),
+}))
+
+export const collaboratorsTeamAssignmentsRelations = relations(collaboratorsTeamAssignments, ({ one }) => ({
+    collaborator: one(collaborators, {
+        fields: [collaboratorsTeamAssignments.collaboratorId],
+        references: [collaborators.id],
+    }),
+    team: one(teams, {
+        fields: [collaboratorsTeamAssignments.teamId],
+        references: [teams.id],
+    }),
+}))
+
+export const rolesRelations = relations(roles, ({ one, many }) => ({
+    createdBy: one(users, {
+        fields: [roles.createdById],
+        references: [users.id],
+    }),
+    eventInstanceRoles: many(eventInstanceRoles),
+}))
+
+export const eventsRelations = relations(events, ({ one, many }) => ({
+    createdBy: one(users, {
+        fields: [events.createdById],
+        references: [users.id],
+    }),
+    instances: many(eventInstances),
+}))
+
+export const eventInstancesRelations = relations(eventInstances, ({ one, many }) => ({
+    event: one(events, {
+        fields: [eventInstances.eventId],
+        references: [events.id],
+    }),
+    roles: many(eventInstanceRoles),
+}))
+
+export const eventInstanceRolesRelations = relations(eventInstanceRoles, ({ one, many }) => ({
+    eventInstance: one(eventInstances, {
+        fields: [eventInstanceRoles.eventInstanceId],
+        references: [eventInstances.id],
+    }),
+    role: one(roles, {
+        fields: [eventInstanceRoles.roleId],
+        references: [roles.id],
+    }),
+    assignments: many(eventRoleAssignments),
+}))
+
+export const eventRoleAssignmentsRelations = relations(eventRoleAssignments, ({ one, many }) => ({
+    eventInstanceRole: one(eventInstanceRoles, {
+        fields: [eventRoleAssignments.eventInstanceRoleId],
+        references: [eventInstanceRoles.id],
+    }),
+    collaborator: one(collaborators, {
+        fields: [eventRoleAssignments.collaboratorId],
+        references: [collaborators.id],
+    }),
+    team: one(teams, {
+        fields: [eventRoleAssignments.teamId],
+        references: [teams.id],
+    }),
+    notifications: many(notifications),
+}))
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+    eventRoleAssignment: one(eventRoleAssignments, {
+        fields: [notifications.eventRoleAssignmentId],
+        references: [eventRoleAssignments.id],
+    }),
+    collaborator: one(collaborators, {
+        fields: [notifications.collaboratorId],
+        references: [collaborators.id],
+    }),
+}))
+
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+    user: one(users, {
+        fields: [auditLogs.userId],
+        references: [users.id],
+    }),
+}))
