@@ -12,6 +12,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import { create } from 'domain'
+import { id } from 'zod/locales'
 
 export const rolesEnum = pgEnum('roles', [
     'ADMIN',
@@ -133,4 +134,65 @@ export const eventInstanceRoles = pgTable('event_instance_roles', {
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
-export const eventRoleAssignments = pgTable('event_role_assignments', {})
+
+const eventAssignmentsEnum = pgEnum('assignment_status', [
+    'PENDING',
+    'ACCEPTED',
+    'DECLINED',
+    'NO_RESPONSE'
+])
+
+
+export const eventRoleAssignments = pgTable('event_role_assignments', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    eventInstanceRoleId: uuid('event_instance_role_id').notNull().references(() : AnyPgColumn => eventInstanceRoles.id),
+    collaboratorId: uuid('collaborator_id').notNull().references(() : AnyPgColumn => collaborators.id),
+    teamId: uuid('team_id').notNull().references(() : AnyPgColumn => teams.id),
+    assignmentStatus: eventAssignmentsEnum('assignment_status').notNull().default('PENDING'),
+    assignedAt: timestamp('assigned_at').notNull().defaultNow(),
+    responseDeadline: timestamp('response_deadline').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+// Controle de notificações enviadas via WhatsApp
+export const notifications = pgTable('notifications', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    eventRoleAssignmentId: uuid('event_role_assignment_id').notNull().references(() : AnyPgColumn => eventRoleAssignments.id),
+    collaboratorId: uuid('collaborator_id').notNull().references(() : AnyPgColumn => collaborators.id),
+    messageContent: text('message_content').notNull(),
+    sentAt: timestamp('sent_at').notNull().defaultNow(),
+    responseStatus: eventAssignmentsEnum('assignment_status').notNull().default('PENDING'),
+    reponseReceivedAt: timestamp('response_received_at'),
+    whatsappMessageId: varchar('whatsapp_message_id', { length: 100}),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+const actionEnum = pgEnum('action_enum', [
+    'CREATE',
+    'READ',
+    'UPDATE',
+    'DELETE',
+])
+
+// Define o que cada tipo de usuário pode fazer
+export const permissions = pgTable('permissions', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    role: rolesEnum('role').notNull().unique(),
+    resource: varchar('resource', { length: 100}).notNull().unique(),
+    action: actionEnum('action').notNull().unique(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const auditLogs = pgTable('audit_logs', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() : AnyPgColumn => users.id),
+    resourceType: varchar('resource_type', { length: 100}).notNull(),
+    resourceId: uuid('resource_id').notNull(),
+    action: actionEnum('action').notNull(),
+    oldValue: jsonb('old_value'),
+    newValue: jsonb('new_value'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    ipAddress: varchar('ip_address', { length: 45}),
+})
