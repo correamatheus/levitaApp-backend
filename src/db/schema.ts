@@ -11,8 +11,9 @@ import {
     type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
+import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 
-export const rolesEnum = pgEnum('roles', [
+export const rolesEnum = pgEnum('user_role', [
     'ADMIN',
     'USER',
     'TEAM_LEADER',
@@ -22,6 +23,13 @@ export const statusEnum = pgEnum('status', [
     'ACTIVE',
     'INACTIVE',
     'SUSPENDED',
+])
+
+export const actionEnum = pgEnum('action_enum', [
+    'CREATE',
+    'READ',
+    'UPDATE',
+    'DELETE',
 ])
 export const users = pgTable('users', {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -122,7 +130,7 @@ export const eventInstances = pgTable('event_instances', {
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
-const eventStatusInstanceRoles = pgEnum('event_instance_role_status', [
+export const eventStatusInstanceRoles = pgEnum('event_instance_role_status', [
     'OPEN',
     'FILLED',
     'PARTIAL',
@@ -140,7 +148,7 @@ export const eventInstanceRoles = pgTable('event_instance_roles', {
 })
 
 
-const eventAssignmentsEnum = pgEnum('assignment_status', [
+export const eventAssignmentsEnum = pgEnum('assignment_status', [
     'PENDING',
     'ACCEPTED',
     'DECLINED',
@@ -174,12 +182,7 @@ export const notifications = pgTable('notifications', {
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
-const actionEnum = pgEnum('action_enum', [
-    'CREATE',
-    'READ',
-    'UPDATE',
-    'DELETE',
-])
+
 
 // Define o que cada tipo de usuário pode fazer
 export const permissions = pgTable('permissions', {
@@ -313,3 +316,42 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
         references: [users.id],
     }),
 }))
+
+export type User = typeof users.$inferSelect
+export type Team = typeof teams.$inferSelect
+export type Collaborator = typeof collaborators.$inferSelect
+export type Role = typeof roles.$inferSelect
+export type Event = typeof events.$inferSelect
+export type EventInstance = typeof eventInstances.$inferSelect
+export type EventInstanceRole = typeof eventInstanceRoles.$inferSelect
+export type EventRoleAssignment = typeof eventRoleAssignments.$inferSelect
+export type Notification = typeof notifications.$inferSelect
+export type AuditLog = typeof auditLogs.$inferSelect
+export type CollaboratorsTeamAssignment = typeof collaboratorsTeamAssignments.$inferSelect
+export type Permission = typeof permissions.$inferSelect
+
+export const insertUserSchema = createInsertSchema(users)
+export const insertTeamSchema = createInsertSchema(teams)
+export const insertCollaboratorSchema = createInsertSchema(collaborators)
+export const insertRoleSchema = createInsertSchema(roles)
+export const insertEventSchema = createInsertSchema(events)
+export const insertEventInstanceSchema = createInsertSchema(eventInstances)
+export const insertEventInstanceRoleSchema = createInsertSchema(eventInstanceRoles)
+export const insertEventRoleAssignmentSchema = createInsertSchema(eventRoleAssignments)
+export const insertNotificationSchema = createInsertSchema(notifications)
+export const insertAuditLogSchema = createInsertSchema(auditLogs)
+export const insertCollaboratorsTeamAssignmentSchema = createInsertSchema(collaboratorsTeamAssignments)
+export const insertPermissionSchema = createInsertSchema(permissions)
+
+export const selectUserSchema = createSelectSchema(users)
+export const selectTeamSchema = createSelectSchema(teams)
+export const selectCollaboratorSchema = createSelectSchema(collaborators)
+export const selectRoleSchema = createSelectSchema(roles)
+export const selectEventSchema = createSelectSchema(events)
+export const selectEventInstanceSchema = createSelectSchema(eventInstances)
+export const selectEventInstanceRoleSchema = createSelectSchema(eventInstanceRoles)
+export const selectEventRoleAssignmentSchema = createSelectSchema(eventRoleAssignments)
+export const selectNotificationSchema = createSelectSchema(notifications)
+export const selectAuditLogSchema = createSelectSchema(auditLogs)
+export const selectCollaboratorsTeamAssignmentSchema = createSelectSchema(collaboratorsTeamAssignments)
+export const selectPermissionSchema = createSelectSchema(permissions)
